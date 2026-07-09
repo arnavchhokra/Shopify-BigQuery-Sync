@@ -53,7 +53,7 @@ def main():
 
     cache = ab.caches.BigQueryCache(
         project_name=os.environ["GCP_PROJECT_ID"],
-        dataset_name="shopify_raw",
+        dataset_name="raw_shopify",
         credentials_path=os.environ["GCP_SA_KEY_PATH"],
     )
 
