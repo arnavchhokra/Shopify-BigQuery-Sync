@@ -12,7 +12,6 @@ def get_access_token(shop: str, client_id: str, client_secret: str) -> str:
     })
     resp.raise_for_status()
     data = resp.json()
-    print(f"Token acquired, expires in {data['expires_in']}s")
     return data["access_token"]
 
 def main():
