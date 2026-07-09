@@ -4,15 +4,21 @@ import requests
 import airbyte as ab
 
 def get_access_token(shop: str, client_id: str, client_secret: str) -> str:
-    """Exchange client_id/secret for a fresh 24h access token (Client Credentials Grant)."""
     url = f"https://{shop}.myshopify.com/admin/oauth/access_token"
-    resp = requests.post(url, json={
-        "client_id": client_id,
-        "client_secret": client_secret,
-    })
+    resp = requests.post(
+        url,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+        },
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+        },
+    )
     resp.raise_for_status()
-    data = resp.json()
-    return data["access_token"]
+    return resp.json()["access_token"]
 
 def main():
     shop = os.environ["SHOPIFY_SHOP"]
