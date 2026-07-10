@@ -31,6 +31,14 @@ jobs:
           GCP_SA_KEY_PATH: ./gcp-sa-key.json
         run: timeout 25m python sync_shopify.py
 
+      - name: Upload Airbyte logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: 
+          name: airbyte-logs
+          path: /tmp/airbyte/logs/
+          retention-days: 7
+
       - name: Clean up credentials
         if: always()
         run: rm -f gcp-sa-key.json
