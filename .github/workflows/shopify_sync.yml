@@ -1,44 +1,44 @@
-name: shopify-bigquery-sync
+# name: shopify-bigquery-sync
 
-on:
-  schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch: {}
+# on:
+#   schedule:
+#     - cron: '0 */6 * * *'
+#   workflow_dispatch: {}
 
-jobs:
-  run-pipeline:
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   run-pipeline:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 180
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+#       - uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+#       - name: Install dependencies
+#         run: pip install -r requirements.txt
 
-      - name: Write GCP key
-        run: echo '${{ secrets.GCP_SA_KEY_JSON }}' > gcp-sa-key.json
+#       - name: Write GCP key
+#         run: echo '${{ secrets.GCP_SA_KEY_JSON }}' > gcp-sa-key.json
 
-      - name: Run sync
-        env:
-          SHOPIFY_SHOP: ${{ secrets.SHOPIFY_SHOP }}
-          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
-          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          GCP_SA_KEY_PATH: ./gcp-sa-key.json
-        run: timeout 25m python sync_shopify.py
+#       - name: Run sync
+#         env:
+#           SHOPIFY_SHOP: ${{ secrets.SHOPIFY_SHOP }}
+#           SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+#           SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+#           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+#           GCP_SA_KEY_PATH: ./gcp-sa-key.json
+#         run: timeout 25m python sync_shopify.py
 
-      - name: Upload Airbyte logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with: 
-          name: airbyte-logs
-          path: /tmp/airbyte/logs/
-          retention-days: 7
+#       - name: Upload Airbyte logs
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with: 
+#           name: airbyte-logs
+#           path: /tmp/airbyte/logs/
+#           retention-days: 7
 
-      - name: Clean up credentials
-        if: always()
-        run: rm -f gcp-sa-key.json
+#       - name: Clean up credentials
+#         if: always()
+#         run: rm -f gcp-sa-key.json
