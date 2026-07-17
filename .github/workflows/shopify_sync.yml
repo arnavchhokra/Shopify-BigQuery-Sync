@@ -1,44 +1,71 @@
-# name: shopify-bigquery-sync
+name: shopify-bigquery-sync
 
-# on:
-#   schedule:
-#     - cron: '0 */6 * * *'
-#   workflow_dispatch: {}
+on:
+  # ── Regular incremental sync: every 6 hours ───────────────────────────
+  schedule:
+    - cron: '0 */6 * * *'
 
-# jobs:
-#   run-pipeline:
-#     runs-on: ubuntu-latest
-#     timeout-minutes: 180
-#     steps:
-#       - uses: actions/checkout@v4
+  # ── Manual trigger with optional backfill date ────────────────────────
+  # For a normal incremental run: leave backfill_start_date blank.
+  # For a full / partial backfill: set backfill_start_date (e.g. 2022-01-01).
+  # Backfills can take a very long time; the job timeout is set to 360 min.
+  workflow_dispatch:
+    inputs:
+      backfill_start_date:
+        description: >
+          Backfill start date (ISO-8601, e.g. 2022-01-01).
+          Leave empty for a normal incremental run.
+        required: false
+        default: ''
 
-#       - uses: actions/setup-python@v5
-#         with:
-#           python-version: '3.11'
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    # Allow up to 6 hours for large historical backfills.
+    # Incremental syncs finish in minutes; the limit only matters for backfills.
+    timeout-minutes: 360
 
-#       - name: Install dependencies
-#         run: pip install -r requirements.txt
+    steps:
+      - uses: actions/checkout@v4
 
-#       - name: Write GCP key
-#         run: echo '${{ secrets.GCP_SA_KEY_JSON }}' > gcp-sa-key.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-#       - name: Run sync
-#         env:
-#           SHOPIFY_SHOP: ${{ secrets.SHOPIFY_SHOP }}
-#           SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
-#           SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-#           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-#           GCP_SA_KEY_PATH: ./gcp-sa-key.json
-#         run: timeout 25m python sync_shopify.py
+      # ── Install dlt + BigQuery destination ──────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-#       - name: Upload Airbyte logs
-#         if: always()
-#         uses: actions/upload-artifact@v4
-#         with: 
-#           name: airbyte-logs
-#           path: /tmp/airbyte/logs/
-#           retention-days: 7
+      # ── Pull the shopify_dlt verified source into the workspace ─────────
+      # This copies the shopify_dlt/ package folder so sync_shopify.py can
+      # import it. We use --non-interactive so the CLI never prompts for input.
+      - name: Initialise dlt Shopify source
+        run: dlt --non-interactive init shopify_dlt bigquery
 
-#       - name: Clean up credentials
-#         if: always()
-#         run: rm -f gcp-sa-key.json
+      # ── Write GCP service-account key to disk ───────────────────────────
+      - name: Write GCP key
+        run: echo '${{ secrets.GCP_SA_KEY_JSON }}' > gcp-sa-key.json
+
+      # ── Run the pipeline ────────────────────────────────────────────────
+      - name: Run sync
+        env:
+          # Shopify credentials (existing secrets — unchanged)
+          SHOPIFY_SHOP: ${{ secrets.SHOPIFY_SHOP }}
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+
+          # BigQuery credentials (existing secret — unchanged)
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          # google-auth picks this up automatically; dlt's BigQuery destination
+          # uses google-auth internally, so no extra env var mapping is needed.
+          GOOGLE_APPLICATION_CREDENTIALS: ./gcp-sa-key.json
+
+          # Backfill date: use the workflow_dispatch input if provided,
+          # otherwise fall back to the default in sync_shopify.py ("2022-01-01").
+          BACKFILL_START_DATE: ${{ github.event.inputs.backfill_start_date }}
+        run: python sync_shopify.py
+
+      # ── Cleanup ─────────────────────────────────────────────────────────
+      - name: Clean up credentials
+        if: always()
+        run: rm -f gcp-sa-key.json
