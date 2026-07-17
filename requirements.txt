@@ -1,2 +1,4 @@
-airbyte
+# dlt core with BigQuery extras
+dlt[bigquery]>=1.4.0
+# HTTP requests for Shopify OAuth token exchange
 requests
