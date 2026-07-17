@@ -62,11 +62,13 @@ def get_access_token(shop: str, client_id: str, client_secret: str) -> str:
 
 def main() -> None:
     shop = os.environ["SHOPIFY_SHOP"]
-    token = get_access_token(
-        shop,
-        os.environ["SHOPIFY_CLIENT_ID"],
-        os.environ["SHOPIFY_CLIENT_SECRET"],
-    )
+    token = os.getenv("SHOPIFY_ACCESS_TOKEN")
+    if not token:
+        token = get_access_token(
+            shop,
+            os.environ["SHOPIFY_CLIENT_ID"],
+            os.environ["SHOPIFY_CLIENT_SECRET"],
+        )
 
     shop_url = f"https://{shop}.myshopify.com"
 
