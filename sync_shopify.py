@@ -28,6 +28,7 @@ import requests as http_requests
 import dlt
 from dlt.common import pendulum
 from shopify_dlt import shopify_source  # pulled into repo by: dlt init shopify_dlt bigquery
+from shopify_extended import shopify_extended_source
 
 
 # ---------------------------------------------------------------------------
@@ -37,14 +38,6 @@ STREAMS = [
     "orders",
     "customers",
     "products",
-    "inventory_items",
-    "fulfillments",
-    "transactions",
-    "refunds",
-    "discount_codes",
-    "price_rules",
-    "gift_cards",
-    "abandoned_checkouts",
 ]
 
 
@@ -99,14 +92,21 @@ def main() -> None:
         start_date=start_date,
     ).with_resources(*STREAMS)
 
+    extended_source = shopify_extended_source(
+        token=token,
+        shop_url=shop_url,
+        orders_resource=source.resources["orders"],
+        products_resource=source.resources["products"]
+    )
+
     print(
         f"Starting dlt sync | shop={shop_url} | start_date={start_date.isoformat()} "
-        f"| streams={STREAMS}"
+        f"| streams={STREAMS} + custom extended resources"
     )
 
     # write_disposition="merge" → dlt UPSERTs rows using the primary key
     # declared in shopify_dlt, so re-running never creates duplicate rows.
-    load_info = pipeline.run(source, write_disposition="merge")
+    load_info = pipeline.run([source, extended_source], write_disposition="merge")
 
     print(load_info)
     print("Sync complete.")
