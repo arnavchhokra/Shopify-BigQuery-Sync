@@ -49,13 +49,16 @@ STREAMS = [
 
 
 def get_access_token(shop: str, client_id: str, client_secret: str) -> str:
-    """Exchange client_id/secret for a fresh Admin API access token."""
+    """Exchange client_id/secret for a fresh Admin API access token.
+    Note: The client_credentials grant type is only supported for Shopify Development Stores.
+    """
     url = f"https://{shop}.myshopify.com/admin/oauth/access_token"
-    resp = http_requests.post(
-        url,
-        json={"client_id": client_id, "client_secret": client_secret},
-        timeout=30,
-    )
+    payload = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "client_credentials"
+    }
+    resp = http_requests.post(url, data=payload, timeout=30)
     resp.raise_for_status()
     return resp.json()["access_token"]
 
