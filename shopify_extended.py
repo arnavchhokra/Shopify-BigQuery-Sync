@@ -10,30 +10,37 @@ def shopify_extended_source(token: str, shop_url: str, orders_resource, products
         headers={"X-Shopify-Access-Token": token}
     )
 
+    def get_items(page_data, key):
+        if hasattr(page_data, "response"):
+            return page_data.response.json().get(key, [])
+        if isinstance(page_data, dict):
+            return page_data.get(key, [])
+        return page_data
+
     # 1. Price Rules (Standalone)
     @dlt.resource(name="price_rules", write_disposition="merge", primary_key="id")
     def price_rules():
         for page in client.paginate("price_rules.json"):
-            yield page.get("price_rules", [])
+            yield get_items(page, "price_rules")
 
     # 2. Discount Codes (Child of Price Rules)
     @dlt.transformer(data_from=price_rules, name="discount_codes", write_disposition="merge", primary_key="id")
     def discount_codes(price_rule):
         for page in client.paginate(f"price_rules/{price_rule['id']}/discount_codes.json"):
-            yield page.get("discount_codes", [])
+            yield get_items(page, "discount_codes")
 
     # 3. Abandoned Checkouts (Standalone)
     @dlt.resource(name="abandoned_checkouts", write_disposition="merge", primary_key="id")
     def abandoned_checkouts():
         for page in client.paginate("checkouts.json"):
-            yield page.get("checkouts", [])
+            yield get_items(page, "checkouts")
 
     # 4. Gift Cards (Standalone - Plus Only usually)
     @dlt.resource(name="gift_cards", write_disposition="merge", primary_key="id")
     def gift_cards():
         try:
             for page in client.paginate("gift_cards.json"):
-                yield page.get("gift_cards", [])
+                yield get_items(page, "gift_cards")
         except Exception as e:
             import logging
             logging.warning(f"Could not fetch gift cards (often requires Shopify Plus): {e}")
@@ -42,17 +49,17 @@ def shopify_extended_source(token: str, shop_url: str, orders_resource, products
     @dlt.transformer(data_from=orders_resource, name="fulfillments", write_disposition="merge", primary_key="id")
     def fulfillments(order):
         for page in client.paginate(f"orders/{order['id']}/fulfillments.json"):
-            yield page.get("fulfillments", [])
+            yield get_items(page, "fulfillments")
 
     @dlt.transformer(data_from=orders_resource, name="transactions", write_disposition="merge", primary_key="id")
     def transactions(order):
         for page in client.paginate(f"orders/{order['id']}/transactions.json"):
-            yield page.get("transactions", [])
+            yield get_items(page, "transactions")
 
     @dlt.transformer(data_from=orders_resource, name="refunds", write_disposition="merge", primary_key="id")
     def refunds(order):
         for page in client.paginate(f"orders/{order['id']}/refunds.json"):
-            yield page.get("refunds", [])
+            yield get_items(page, "refunds")
 
     # 8. Inventory Items (Dependent on Products' variants)
     @dlt.transformer(data_from=products_resource, name="inventory_items", write_disposition="merge", primary_key="id")
@@ -70,7 +77,7 @@ def shopify_extended_source(token: str, shop_url: str, orders_resource, products
             if not chunk: continue
             ids_str = ",".join(chunk)
             for page in client.paginate("inventory_items.json", params={"ids": ids_str}):
-                yield page.get("inventory_items", [])
+                yield get_items(page, "inventory_items")
 
     return [
         price_rules, 
