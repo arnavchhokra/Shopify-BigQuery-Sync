@@ -106,6 +106,13 @@ def main() -> None:
         start_date=start_date,
     ).with_resources(*STREAMS)
 
+    # Disable external schedulers on the verified source so it relies on internal state
+    # rather than crashing when run outside of Airflow.
+    for resource_name, resource in source.resources.items():
+        for step in resource.steps:
+            if hasattr(step, "allow_external_schedulers"):
+                step.allow_external_schedulers = False
+
     extended_source = shopify_extended_source(
         token=token,
         shop_url=shop_url,
