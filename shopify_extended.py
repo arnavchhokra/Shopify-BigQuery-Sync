@@ -3,8 +3,10 @@ from dlt.sources.helpers.rest_client import RESTClient
 
 @dlt.source(name="shopify_extended")
 def shopify_extended_source(token: str, shop_url: str, orders_resource, products_resource):
+    # Ensure shop_url doesn't have a trailing slash
+    shop_url = shop_url.rstrip("/")
     client = RESTClient(
-        base_url=f"https://{shop_url}.myshopify.com/admin/api/2024-01",
+        base_url=f"{shop_url}/admin/api/2024-01",
         headers={"X-Shopify-Access-Token": token}
     )
 
