@@ -125,8 +125,6 @@ def main() -> None:
     extended_source = shopify_extended_source(
         token=token,
         shop_url=shop_url,
-        orders_resource=source.resources["orders"],
-        products_resource=source.resources["products"]
     )
 
     print(
