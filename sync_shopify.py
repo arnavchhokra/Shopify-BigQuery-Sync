@@ -70,7 +70,9 @@ def main() -> None:
 
     # BACKFILL_START_DATE is only the initial lower bound.
     # After the first run, dlt's incremental state takes over automatically.
-    raw_start = os.environ.get("BACKFILL_START_DATE", "2022-01-01")
+    raw_start = os.environ.get("BACKFILL_START_DATE")
+    if not raw_start:
+        raw_start = "2026-01-01"
     start_date = pendulum.parse(raw_start)
 
     # ------------------------------------------------------------------
