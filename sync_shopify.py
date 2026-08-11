@@ -25,6 +25,22 @@ import os
 import sys
 
 import requests as http_requests
+
+# ---------------------------------------------------------------------------
+# Patch the generated shopify_dlt verified source before we import it.
+# Newer versions of dlt crash if allow_external_schedulers=True is set but
+# Airflow (or interval variables) are not present. This disables that flag
+# so it falls back safely to internal incremental state logic.
+# ---------------------------------------------------------------------------
+shopify_init_path = os.path.join(os.path.dirname(__file__), "shopify_dlt", "__init__.py")
+if os.path.exists(shopify_init_path):
+    with open(shopify_init_path, "r") as f:
+        content = f.read()
+    if "allow_external_schedulers=True" in content:
+        content = content.replace("allow_external_schedulers=True", "allow_external_schedulers=False")
+        with open(shopify_init_path, "w") as f:
+            f.write(content)
+
 import dlt
 from dlt.common import pendulum
 from shopify_dlt import shopify_source  # pulled into repo by: dlt init shopify_dlt bigquery
@@ -105,13 +121,6 @@ def main() -> None:
         shop_url=shop_url,
         start_date=start_date,
     ).with_resources(*STREAMS)
-
-    # Disable external schedulers on the verified source so it relies on internal state
-    # rather than crashing when run outside of Airflow.
-    for resource_name, resource in source.resources.items():
-        for step in resource.steps:
-            if hasattr(step, "allow_external_schedulers"):
-                step.allow_external_schedulers = False
 
     extended_source = shopify_extended_source(
         token=token,
