@@ -109,7 +109,7 @@ def shopify_segments_source(token: str, shop_url: str):
 
     @dlt.resource(name="segments", write_disposition="merge", primary_key="id")
     def segments():
-        yield _list_all_segments(shop_url, token)
+        yield from _list_all_segments(shop_url, token)
 
     @dlt.transformer(
         data_from=segments,
