@@ -1,14 +1,32 @@
+import requests as _requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import dlt
 from dlt.sources.helpers.rest_client import RESTClient
 from dlt.sources.helpers.rest_client.paginators import HeaderLinkPaginator
 
 
+def _retry_session() -> _requests.Session:
+    """Requests session that auto-retries on 429 / 5xx, honouring Retry-After."""
+    session = _requests.Session()
+    retry = Retry(
+        total=10,
+        backoff_factor=2,          # waits: 2s, 4s, 8s, 16s … up to ~34 min total
+        status_forcelist=[429, 500, 502, 503, 504],
+        respect_retry_after_header=True,
+        raise_on_status=False,
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    return session
+
+
 def _make_client(shop_url: str, token: str) -> RESTClient:
-    """Build a RESTClient with Shopify's Link-header paginator."""
+    """Build a RESTClient with Shopify's Link-header paginator and retry logic."""
     return RESTClient(
         base_url=f"{shop_url.rstrip('/')}/admin/api/2024-01",
         headers={"X-Shopify-Access-Token": token},
         paginator=HeaderLinkPaginator(),
+        session=_retry_session(),
     )
 
 

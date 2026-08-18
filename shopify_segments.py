@@ -13,14 +13,28 @@ Tables produced:
 
 import time
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import dlt
 
 GRAPHQL_API_VERSION = "2025-01"  # Segments API requires 2024-10+
 
+# Module-level session shared across all GraphQL calls — retries on 429/5xx
+# and honours Shopify's Retry-After header automatically.
+_session = requests.Session()
+_retry = Retry(
+    total=10,
+    backoff_factor=2,
+    status_forcelist=[429, 500, 502, 503, 504],
+    respect_retry_after_header=True,
+    raise_on_status=False,
+)
+_session.mount("https://", HTTPAdapter(max_retries=_retry))
+
 
 def _graphql(shop_url: str, token: str, query: str, variables: dict = None) -> dict:
     url = f"{shop_url.rstrip('/')}/admin/api/{GRAPHQL_API_VERSION}/graphql.json"
-    resp = requests.post(
+    resp = _session.post(
         url,
         headers={"X-Shopify-Access-Token": token, "Content-Type": "application/json"},
         json={"query": query, "variables": variables or {}},
