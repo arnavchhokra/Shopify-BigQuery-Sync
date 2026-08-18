@@ -45,6 +45,7 @@ import dlt
 from dlt.common import pendulum
 from shopify_dlt import shopify_source  # pulled into repo by: dlt init shopify_dlt bigquery
 from shopify_extended import shopify_extended_source
+from shopify_segments import shopify_segments_source
 
 
 # ---------------------------------------------------------------------------
@@ -127,14 +128,24 @@ def main() -> None:
         shop_url=shop_url,
     )
 
+    # Segments are GraphQL-only (no date filtering) — skip during REST-only backfills
+    # to avoid a redundant full-segment pull on every historical re-run.
+    # Set SKIP_SEGMENTS=true in the workflow to suppress.
+    skip_segments = os.environ.get("SKIP_SEGMENTS", "").lower() in ("1", "true", "yes")
+    all_sources = [source, extended_source]
+    if not skip_segments:
+        segments_source = shopify_segments_source(token=token, shop_url=shop_url)
+        all_sources.append(segments_source)
+
     print(
         f"Starting dlt sync | shop={shop_url} | start_date={start_date.isoformat()} "
-        f"| streams={STREAMS} + custom extended resources"
+        f"| streams={STREAMS} + extended resources"
+        + (" + segments (GraphQL)" if not skip_segments else " [segments skipped]")
     )
 
     # write_disposition="merge" → dlt UPSERTs rows using the primary key
     # declared in shopify_dlt, so re-running never creates duplicate rows.
-    load_info = pipeline.run([source, extended_source], write_disposition="merge")
+    load_info = pipeline.run(all_sources, write_disposition="merge")
 
     print(load_info)
     print("Sync complete.")

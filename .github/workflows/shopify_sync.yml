@@ -17,6 +17,14 @@ on:
           Leave empty for a normal incremental run.
         required: false
         default: ''
+      skip_segments:
+        description: >
+          Set to 'true' to skip segments sync.
+          Defaults to 'true' when backfill_start_date is set (segments have no
+          date filter so pulling them during every REST backfill is redundant).
+          Leave empty to let the script decide automatically.
+        required: false
+        default: ''
 
 jobs:
   run-pipeline:
@@ -63,6 +71,11 @@ jobs:
           # Backfill date: use the workflow_dispatch input if provided,
           # otherwise fall back to the default in sync_shopify.py ("2022-01-01").
           BACKFILL_START_DATE: ${{ github.event.inputs.backfill_start_date }}
+
+          # Skip segments when explicitly set, OR when a backfill date was given
+          # (segments ignore date ranges — pulling them during every historical
+          # REST backfill just wastes API quota).
+          SKIP_SEGMENTS: ${{ github.event.inputs.skip_segments != '' && github.event.inputs.skip_segments || (github.event.inputs.backfill_start_date != '' && 'true' || 'false') }}
         run: python sync_shopify.py
 
       # ── Cleanup ─────────────────────────────────────────────────────────
