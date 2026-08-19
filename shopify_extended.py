@@ -13,7 +13,6 @@ def _retry_session() -> _requests.Session:
         total=10,
         backoff_factor=2,          # waits: 2s, 4s, 8s, 16s … up to ~34 min total
         status_forcelist=[429, 500, 502, 503, 504],
-        respect_retry_after_header=True,
         raise_on_status=False,
     )
     session.mount("https://", HTTPAdapter(max_retries=retry))
