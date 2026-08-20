@@ -91,8 +91,8 @@ def _fetch_segment_members(shop_url: str, token: str, segment_id: str) -> list:
         raise TimeoutError(f"Segment members query for {segment_id} timed out after 2 minutes")
 
     members_q = """
-    query($segId: ID!, $qId: ID, $cursor: String) {
-      customerSegmentMembers(segmentId: $segId, queryId: $qId, first: 250, after: $cursor) {
+    query($qId: ID!, $cursor: String) {
+      customerSegmentMembers(queryId: $qId, first: 250, after: $cursor) {
         edges {
           node {
             id
@@ -109,7 +109,7 @@ def _fetch_segment_members(shop_url: str, token: str, segment_id: str) -> list:
     }"""
     members, cursor = [], None
     while True:
-        data = _graphql(shop_url, token, members_q, {"segId": segment_id, "qId": query_id, "cursor": cursor})
+        data = _graphql(shop_url, token, members_q, {"qId": query_id, "cursor": cursor})
         conn = data["customerSegmentMembers"]
         members += [e["node"] for e in conn["edges"]]
         if not conn["pageInfo"]["hasNextPage"]:
